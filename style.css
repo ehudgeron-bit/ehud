@@ -1,0 +1,253 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  gap: 16px;
+}
+
+header {
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2rem;
+  color: #e2b57e;
+  margin-bottom: 4px;
+}
+
+#status {
+  font-size: 1.1rem;
+  color: #ccc;
+  min-height: 1.5em;
+}
+
+#game-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.captured-pieces {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 1.3rem;
+  min-height: 300px;
+}
+
+#board-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#rank-labels {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  left: -20px;
+  top: 0;
+  height: 100%;
+}
+
+#board-wrapper {
+  position: relative;
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 70px);
+  grid-template-rows: repeat(8, 70px);
+  border: 3px solid #e2b57e;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.square {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.square.light {
+  background: #f0d9b5;
+}
+
+.square.dark {
+  background: #b58863;
+}
+
+.square.selected {
+  background: #7fc97f !important;
+}
+
+.square.legal-move::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+}
+
+.square.legal-capture {
+  box-shadow: inset 0 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.square.last-move {
+  background: rgba(255, 255, 100, 0.4) !important;
+}
+
+.square.in-check {
+  background: radial-gradient(ellipse at center, #ff0000 0%, #cc0000 40%, transparent 70%) !important;
+}
+
+.square .piece {
+  z-index: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+
+.square.dragging {
+  opacity: 0.4;
+}
+
+#file-labels {
+  display: flex;
+  justify-content: space-around;
+  width: 560px;
+  color: #e2b57e;
+  font-size: 0.85rem;
+  padding-top: 4px;
+}
+
+#controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+button {
+  background: #e2b57e;
+  color: #1a1a2e;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #c9a066;
+}
+
+#mode-select {
+  display: flex;
+  gap: 12px;
+}
+
+#mode-select label, #ai-difficulty label {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+select {
+  background: #2a2a4a;
+  color: #eee;
+  border: 1px solid #e2b57e;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #2a2a4a;
+  padding: 24px 32px;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #e2b57e;
+}
+
+.modal-content h2 {
+  color: #e2b57e;
+  margin-bottom: 12px;
+}
+
+#promotion-choices {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+#promotion-choices .promo-option {
+  font-size: 2.5rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+#promotion-choices .promo-option:hover {
+  background: rgba(226, 181, 126, 0.3);
+}
+
+#gameover-modal .modal-content p {
+  margin-bottom: 16px;
+  color: #ccc;
+}
+
+.drag-ghost {
+  position: fixed;
+  font-size: 3.2rem;
+  pointer-events: none;
+  z-index: 200;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}

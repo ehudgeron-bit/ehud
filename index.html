@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Chess</h1>
+      <div id="status">White's turn</div>
+    </header>
+    <div id="game-container">
+      <div id="captured-black" class="captured-pieces"></div>
+      <div id="board-wrapper">
+        <div id="rank-labels" class="labels"></div>
+        <div id="board"></div>
+        <div id="file-labels" class="labels"></div>
+      </div>
+      <div id="captured-white" class="captured-pieces"></div>
+    </div>
+    <div id="controls">
+      <button id="new-game-btn">New Game</button>
+      <button id="undo-btn">Undo</button>
+      <button id="flip-btn">Flip Board</button>
+      <div id="mode-select">
+        <label><input type="radio" name="mode" value="pvp"> Player vs Player</label>
+        <label><input type="radio" name="mode" value="ai" checked> Player vs AI</label>
+      </div>
+      <div id="ai-difficulty">
+        <label>AI Depth:
+          <select id="depth-select">
+            <option value="1">Easy (1)</option>
+            <option value="2" selected>Medium (2)</option>
+            <option value="3">Hard (3)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id="promotion-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Promote Pawn</h2>
+        <div id="promotion-choices"></div>
+      </div>
+    </div>
+    <div id="gameover-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2 id="gameover-title"></h2>
+        <p id="gameover-message"></p>
+        <button id="gameover-new-game">New Game</button>
+      </div>
+    </div>
+  </div>
+  <script src="chess.js"></script>
+  <script src="ai.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
