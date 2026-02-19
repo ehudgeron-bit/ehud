@@ -142,6 +142,17 @@ const UI = (() => {
     });
     info.appendChild(tagRow);
 
+    if (recipe.isCustom && recipe.createdBy === user.username) {
+      info.appendChild(el('span', { className: 'custom-badge' }, '\u270F\uFE0F Mine'));
+      info.appendChild(el('button', { className: 'custom-delete-btn', onClick: function(e) {
+        e.stopPropagation();
+        if (confirm('Delete "' + recipe.title + '"? This cannot be undone.')) {
+          Store.deleteCustomRecipe(recipe.id);
+          render();
+        }
+      }}, '\uD83D\uDDD1 Delete'));
+    }
+
     const likeBtn = el('button', {
       className: 'like-btn' + (isLiked ? ' liked' : ''),
       onClick: function(e) {
@@ -192,11 +203,19 @@ const UI = (() => {
       grid.appendChild(empty);
     }
 
+    const addRecipeBtn = el('button', {
+      className: 'btn-primary add-recipe-btn',
+      onClick: function() { Store.setView('create-recipe'); render(); },
+    }, '+ Add Recipe');
+
     root().innerHTML = '';
     root().appendChild(
       el('div', { className: 'page' },
         buildHeader(user, 'library'),
-        el('div', { className: 'library-toolbar' }, searchInput, pills),
+        el('div', { className: 'library-toolbar' },
+          el('div', { className: 'toolbar-top-row' }, searchInput, addRecipeBtn),
+          pills
+        ),
         el('main', { className: 'library-main' }, grid)
       )
     );
@@ -307,6 +326,25 @@ const UI = (() => {
 
     const addRow = el('div', { className: 'add-item-row' }, nameInput, qtyInput, unitInput, addItemBtn);
 
+    function buildBuyLinks(itemName) {
+      const q = encodeURIComponent(itemName);
+      const stores = [
+        { label: '\u05E8\u05DE\u05D9 \u05DC\u05D5\u05D9', url: 'https://www.rami-levy.co.il/he/marketing/search?q=' + q },
+        { label: '\u05E9\u05D5\u05E4\u05E8\u05E1\u05DC', url: 'https://www.shufersal.co.il/online/he/search?q=' + q },
+        { label: '\u05D0\u05D5\u05E9\u05E8 \u05E2\u05D3', url: 'https://www.osherad.co.il/search?q=' + q },
+      ];
+      const panel = el('div', { className: 'buy-links hidden' });
+      stores.forEach(function(store) {
+        panel.appendChild(el('a', {
+          href: store.url,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          className: 'buy-link',
+        }, store.label));
+      });
+      return panel;
+    }
+
     function buildItem(item) {
       const sourceRecipe = (item.source && item.source !== 'manual') ? Recipes.getById(allRecipes, item.source) : null;
       const checkbox = el('input', { type: 'checkbox', className: 'item-checkbox' });
@@ -327,13 +365,29 @@ const UI = (() => {
       }
       if (item.notes) details.appendChild(el('span', { className: 'item-notes' }, item.notes));
 
+      const buyLinksPanel = buildBuyLinks(item.name);
+
+      const buyToggleBtn = el('button', {
+        className: 'buy-toggle-btn',
+        title: 'Buy online',
+        onClick: function(e) {
+          e.stopPropagation();
+          buyLinksPanel.classList.toggle('hidden');
+        },
+      }, '\uD83D\uDED2');
+
       const delBtn = el('button', { className: 'item-delete-btn', title: 'Remove', onClick: function() {
         Shopping.removeItem(user, item.id);
         Store.updateShoppingList(user.shoppingList);
         render();
       }}, '\u2715');
 
-      return el('div', { className: 'shopping-item' + (item.checked ? ' checked' : '') }, checkbox, details, delBtn);
+      return el('div', { className: 'shopping-item-wrapper' },
+        el('div', { className: 'shopping-item' + (item.checked ? ' checked' : '') },
+          checkbox, details, buyToggleBtn, delBtn
+        ),
+        buyLinksPanel
+      );
     }
 
     const listActions = el('div', { className: 'list-actions' });
@@ -436,6 +490,171 @@ const UI = (() => {
     root().appendChild(el('div', { className: 'page' }, buildHeader(user, 'staples'), container));
   }
 
+  // ── View: Create Recipe ───────────────────────────────────────────────────
+
+  function renderCreateRecipe(state, user) {
+    // ── Dynamic ingredient rows ──────────────────────────────────────────────
+    const ingredientsContainer = el('div', { className: 'form-dynamic-list' });
+
+    function buildIngredientRow() {
+      const row = el('div', { className: 'dynamic-row ingredient-row' },
+        el('input', { type: 'text',   className: 'form-input ing-name-input',  placeholder: 'Ingredient name' }),
+        el('input', { type: 'number', className: 'form-input ing-qty-input',   placeholder: 'Qty', min: '0', step: 'any' }),
+        el('input', { type: 'text',   className: 'form-input ing-unit-input',  placeholder: 'Unit' }),
+        el('input', { type: 'text',   className: 'form-input ing-notes-input', placeholder: 'Notes (optional)' }),
+        el('button', { className: 'remove-row-btn', title: 'Remove', onClick: function() {
+          if (ingredientsContainer.children.length > 1) ingredientsContainer.removeChild(row);
+        }}, '\u2715')
+      );
+      return row;
+    }
+    ingredientsContainer.appendChild(buildIngredientRow());
+
+    const addIngBtn = el('button', { className: 'btn-ghost add-row-btn', onClick: function() {
+      ingredientsContainer.appendChild(buildIngredientRow());
+    }}, '+ Add ingredient');
+
+    // ── Dynamic step rows ────────────────────────────────────────────────────
+    const stepsContainer = el('div', { className: 'form-dynamic-list' });
+
+    function buildStepRow() {
+      const stepNum = el('span', { className: 'step-number' }, (stepsContainer.children.length + 1) + '.');
+      const row = el('div', { className: 'dynamic-row step-row' },
+        stepNum,
+        el('textarea', { className: 'form-textarea step-textarea', placeholder: 'Describe this step\u2026', rows: '2' }),
+        el('button', { className: 'remove-row-btn', title: 'Remove', onClick: function() {
+          if (stepsContainer.children.length > 1) stepsContainer.removeChild(row);
+        }}, '\u2715')
+      );
+      return row;
+    }
+    stepsContainer.appendChild(buildStepRow());
+
+    const addStepBtn = el('button', { className: 'btn-ghost add-row-btn', onClick: function() {
+      stepsContainer.appendChild(buildStepRow());
+    }}, '+ Add step');
+
+    // ── Static fields ────────────────────────────────────────────────────────
+    const titleInput    = el('input', { type: 'text',   className: 'form-input', placeholder: 'Recipe title *', maxlength: '100' });
+    const descInput     = el('textarea', { className: 'form-textarea', placeholder: 'Short description\u2026', rows: '3' });
+    const categoryInput = el('input', { type: 'text',   className: 'form-input', placeholder: 'Category (e.g. pasta, dessert, soup\u2026)' });
+    const emojiInput    = el('input', { type: 'text',   className: 'form-input emoji-input', placeholder: '\uD83C\uDF7D\uFE0F', maxlength: '4' });
+    const tagsInput     = el('input', { type: 'text',   className: 'form-input', placeholder: 'Tags, comma-separated (e.g. quick, vegetarian)' });
+    const servingsInput = el('input', { type: 'number', className: 'form-input', placeholder: 'Servings', min: '1' });
+    const prepTimeInput = el('input', { type: 'number', className: 'form-input', placeholder: 'Prep time (min)', min: '0' });
+    const cookTimeInput = el('input', { type: 'number', className: 'form-input', placeholder: 'Cook time (min)', min: '0' });
+
+    // ── Collect + validate + save ────────────────────────────────────────────
+    function collectIngredients() {
+      const rows = ingredientsContainer.querySelectorAll('.ingredient-row');
+      const result = [];
+      rows.forEach(function(row) {
+        const name = row.querySelector('.ing-name-input').value.trim();
+        if (!name) return;
+        const qty  = parseFloat(row.querySelector('.ing-qty-input').value) || null;
+        const unit = row.querySelector('.ing-unit-input').value.trim() || null;
+        const notes = row.querySelector('.ing-notes-input').value.trim() || undefined;
+        result.push({ name: name, quantity: qty, unit: unit, notes: notes });
+      });
+      return result;
+    }
+
+    function collectSteps() {
+      const textareas = stepsContainer.querySelectorAll('.step-textarea');
+      const result = [];
+      textareas.forEach(function(ta) {
+        const text = ta.value.trim();
+        if (text) result.push(text);
+      });
+      return result;
+    }
+
+    const saveBtn = el('button', { className: 'btn-primary', onClick: function() {
+      const title       = titleInput.value.trim();
+      const ingredients = collectIngredients();
+      const steps       = collectSteps();
+
+      if (!title) {
+        Store.showNotification('Please enter a recipe title.', 'warning'); return;
+      }
+      if (ingredients.length === 0) {
+        Store.showNotification('Please add at least one ingredient.', 'warning'); return;
+      }
+      if (steps.length === 0) {
+        Store.showNotification('Please add at least one step.', 'warning'); return;
+      }
+
+      const tags = tagsInput.value.split(',')
+        .map(function(t) { return t.trim().toLowerCase(); })
+        .filter(Boolean);
+
+      Store.addCustomRecipe({
+        title: title,
+        description: descInput.value.trim(),
+        category: categoryInput.value.trim().toLowerCase() || 'custom',
+        coverEmoji: emojiInput.value.trim() || '\uD83C\uDF7D\uFE0F',
+        tags: tags,
+        servings: parseInt(servingsInput.value) || 1,
+        prepTime: parseInt(prepTimeInput.value) || 0,
+        cookTime: parseInt(cookTimeInput.value) || 0,
+        ingredients: ingredients,
+        steps: steps,
+        isCustom: true,
+        createdBy: user.username,
+      });
+
+      Store.showNotification('\u2705 Recipe saved!', 'success');
+      Store.setView('library');
+      render();
+    }}, 'Save Recipe');
+
+    const cancelBtn = el('button', { className: 'btn-ghost', onClick: function() {
+      Store.setView('library'); render();
+    }}, 'Cancel');
+
+    // ── Assemble form ────────────────────────────────────────────────────────
+    const form = el('div', { className: 'create-recipe-form' },
+      el('div', { className: 'form-section' },
+        el('h2', null, 'Basic Info'),
+        el('label', { className: 'form-label' }, 'Title *', titleInput),
+        el('label', { className: 'form-label' }, 'Description', descInput),
+        el('div', { className: 'form-row' },
+          el('label', { className: 'form-label' }, 'Category', categoryInput),
+          el('label', { className: 'form-label form-label-emoji' }, 'Cover Emoji', emojiInput)
+        ),
+        el('label', { className: 'form-label' }, 'Tags (comma-separated)', tagsInput),
+        el('div', { className: 'form-row' },
+          el('label', { className: 'form-label' }, 'Servings', servingsInput),
+          el('label', { className: 'form-label' }, 'Prep time (min)', prepTimeInput),
+          el('label', { className: 'form-label' }, 'Cook time (min)', cookTimeInput)
+        )
+      ),
+      el('div', { className: 'form-section' },
+        el('h2', null, 'Ingredients *'),
+        ingredientsContainer,
+        addIngBtn
+      ),
+      el('div', { className: 'form-section' },
+        el('h2', null, 'Steps *'),
+        stepsContainer,
+        addStepBtn
+      ),
+      el('div', { className: 'form-actions' }, saveBtn, cancelBtn)
+    );
+
+    root().innerHTML = '';
+    root().appendChild(
+      el('div', { className: 'page' },
+        buildHeader(user, 'library'),
+        el('div', { className: 'create-recipe-container' },
+          el('button', { className: 'back-btn', onClick: function() { Store.setView('library'); render(); } }, '\u2190 Back to Library'),
+          el('h1', { className: 'create-recipe-title' }, 'Create New Recipe'),
+          form
+        )
+      )
+    );
+  }
+
   // ── Main render dispatcher ────────────────────────────────────────────────
 
   function render() {
@@ -448,11 +667,12 @@ const UI = (() => {
     }
 
     switch (state.currentView) {
-      case 'library':  renderLibrary(state, user);  break;
-      case 'recipe':   renderRecipe(state, user);   break;
-      case 'shopping': renderShopping(state, user); break;
-      case 'staples':  renderStaples(state, user);  break;
-      default:         renderLibrary(state, user);
+      case 'library':        renderLibrary(state, user);       break;
+      case 'recipe':         renderRecipe(state, user);        break;
+      case 'shopping':       renderShopping(state, user);      break;
+      case 'staples':        renderStaples(state, user);       break;
+      case 'create-recipe':  renderCreateRecipe(state, user);  break;
+      default:               renderLibrary(state, user);
     }
   }
 

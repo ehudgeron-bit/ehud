@@ -3,6 +3,8 @@ const Store = (() => {
   const LS_CURRENT = 'rapp_current_user';
   const LS_USER_PREFIX = 'rapp_user_';
 
+  let _seedRecipes = [];
+
   let state = {
     currentUser: null,       // username string or null
     currentView: 'login',    // 'login' | 'library' | 'recipe' | 'shopping' | 'staples'
@@ -14,6 +16,19 @@ const Store = (() => {
     notification: null,
     _notifTimer: null,
   };
+
+  // ── Private helpers ──────────────────────────────────────────────────────
+
+  function _mergeRecipes() {
+    const user = getCurrentUser();
+    const custom = (user && user.customRecipes) ? user.customRecipes : [];
+    state.recipes = _seedRecipes.concat(custom);
+  }
+
+  function _genRecipeId() {
+    return 'usr_' + state.currentUser + '_' + Date.now().toString(36)
+      + '_' + Math.random().toString(36).slice(2, 7);
+  }
 
   // ── Persistence ──────────────────────────────────────────────────────────
 
@@ -51,12 +66,16 @@ const Store = (() => {
         likedRecipes: [],
         shoppingList: [],
         staples: [],
+        customRecipes: [],
       };
+    } else if (!state.users[u].customRecipes) {
+      state.users[u].customRecipes = [];
     }
     state.currentUser = u;
     state.currentView = 'library';
     localStorage.setItem(LS_CURRENT, u);
     _saveUser(u);
+    _mergeRecipes();
     return true;
   }
 
@@ -65,6 +84,7 @@ const Store = (() => {
     state.currentView = 'login';
     state.searchQuery = '';
     state.filterCategory = 'all';
+    state.recipes = _seedRecipes.slice();
     localStorage.removeItem(LS_CURRENT);
   }
 
@@ -86,7 +106,8 @@ const Store = (() => {
   // ── Mutations ────────────────────────────────────────────────────────────
 
   function initRecipes(recipes) {
-    state.recipes = recipes;
+    _seedRecipes = recipes;
+    _mergeRecipes(); // handles page-reload with existing logged-in user
   }
 
   function setView(view, recipeId) {
@@ -147,6 +168,26 @@ const Store = (() => {
     }
   }
 
+  // ── Custom recipes ───────────────────────────────────────────────────────
+
+  function addCustomRecipe(recipeData) {
+    const user = getCurrentUser();
+    if (!user) return false;
+    if (!user.customRecipes) user.customRecipes = [];
+    user.customRecipes.push(Object.assign({}, recipeData, { id: _genRecipeId() }));
+    _saveUser(state.currentUser);
+    _mergeRecipes();
+    return true;
+  }
+
+  function deleteCustomRecipe(recipeId) {
+    const user = getCurrentUser();
+    if (!user || !user.customRecipes) return;
+    user.customRecipes = user.customRecipes.filter(function(r) { return r.id !== recipeId; });
+    _saveUser(state.currentUser);
+    _mergeRecipes();
+  }
+
   // ── Computed helpers ─────────────────────────────────────────────────────
 
   function getLikeCount(recipeId) {
@@ -175,5 +216,7 @@ const Store = (() => {
     updateStaples,
     showNotification,
     getLikeCount,
+    addCustomRecipe,
+    deleteCustomRecipe,
   };
 })();
